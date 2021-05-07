@@ -1,0 +1,15 @@
+server:
+  port: 8085
+
+
+spring:
+  application:
+    name: ddns
+  profiles:
+    active: dev
+
+aliyun:
+  ddns:
+    regionId:
+    accessKeyId:
+    secret:
