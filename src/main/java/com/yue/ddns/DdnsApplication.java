@@ -1,6 +1,8 @@
 package com.yue.ddns;
 
+import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableScheduling
@@ -32,7 +34,9 @@ public class DdnsApplication {
 			configFilesPath = String.join(",", configFilesPath, prodPath);
 		}
 		System.setProperty(CONFIG_FILES_PATH, configFilesPath);
-		org.springframework.boot.SpringApplication.run(DdnsApplication.class, "--spring.config.location=" + configFilesPath);
+		// 非web方式启动
+        new SpringApplicationBuilder()
+                .sources(DdnsApplication.class).web(WebApplicationType.NONE).run(args);
 
-	}
+    }
 }

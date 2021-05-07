@@ -1,7 +1,3 @@
-server:
-  port: 8085
-
-
 spring:
   application:
     name: ddns
@@ -10,6 +6,8 @@ spring:
 
 aliyun:
   ddns:
-    regionId:
-    accessKeyId:
-    secret:
+    fixedDelay: 180
+    regionId: cn-beijing
+    accessKeyId: LTAI5tAVU2Uf3JhUuUVSd4cH
+    secret: tO3FCwfWpWthTAkcUqz2gwb3elxLhe
+    domains: cloud.yxb.cool,blog.yxb.cool

@@ -1,5 +1,6 @@
 package com.yue.ddns;
 
+import com.alibaba.fastjson.JSON;
 import com.aliyuncs.DefaultAcsClient;
 import com.aliyuncs.IAcsClient;
 import com.aliyuncs.alidns.model.v20150109.DescribeSubDomainRecordsRequest;
@@ -13,12 +14,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,8 +33,6 @@ public class AliyunDdns {
 
 	private DefaultProfile profile;
 	private IAcsClient client;
-	private DescribeSubDomainRecordsRequest recordsRequest;
-
 	@Value("${spring.profiles.active}")
 	private String activeProfile;// 环境
 
@@ -41,55 +42,68 @@ public class AliyunDdns {
 	private String accessKeyId;// 您的AccessKey ID
 	@Value("${aliyun.ddns.secret}")
 	private String secret;// 您的AccessKey Secret
+    @Value("${aliyun.ddns.domains}")
+	private String domains;
+    @Value("${aliyun.ddns.fixedDelay}")
+    private String fixedDelay;
 
 	@PostConstruct
 	public void init(){
 		//  设置鉴权参数，初始化客户端
+        logger.info("----------------system init start----------------");
 		profile = DefaultProfile.getProfile(regionId, accessKeyId, secret);
 		client = new DefaultAcsClient(profile);
+		logger.info("需要监控的domains：{}", domains);
+		logger.info("任务执行频率：{}s", fixedDelay);
+        logger.info("----------------system init end----------------");
 
-		//指定查询的二级域名
-		recordsRequest = new DescribeSubDomainRecordsRequest();
-		recordsRequest.setSubDomain("cloud.yxb.cool");
-	}
+    }
 
-	@Scheduled(initialDelay = 10000, fixedDelay = 180000)//3min
+	@Scheduled(initialDelay = 10000, fixedDelayString = "${aliyun.ddns.fixedDelay}000")//3min
 	public void schedulingMethod() {
+	    if (!StringUtils.hasText(domains)) {
+	        logger.info("无需要监控的domain记录");
+        }
+        String[] domainList = domains.split(",");
+        for (String domain : domainList) {
+            //指定查询的二级域名
+            DescribeSubDomainRecordsRequest recordsRequest = new DescribeSubDomainRecordsRequest();
+            recordsRequest.setSubDomain(domain);
+            DescribeSubDomainRecordsResponse recordsResponse = this.describeSubDomainRecords(recordsRequest, client);
+            List<DescribeSubDomainRecordsResponse.Record> domainRecords = recordsResponse.getDomainRecords();
+            logger.info("查询解析记录结果，domainRecords:{}", JSON.toJSONString(domainRecords));
+            //最新的一条解析记录
+            if (domainRecords.size() != 0) {
+                DescribeSubDomainRecordsResponse.Record record = domainRecords.get(0);
+                //  记录ID
+                String recordId = record.getRecordId();
+                //  记录值
+                String recordsValue = record.getValue();
+                //  当前主机公网IP
+                String currentHostIP = this.getCurrentHostIP();
+                logger.info("当前主机公网IP为：{},当前记录值为：{}", currentHostIP, recordsValue);
 
-		DescribeSubDomainRecordsResponse recordsResponse = this.describeSubDomainRecords(recordsRequest, client);
-		List<DescribeSubDomainRecordsResponse.Record> domainRecords = recordsResponse.getDomainRecords();
-		logger.info("查询解析记录结果，domainRecords:{}", domainRecords);
-		//最新的一条解析记录
-		if (domainRecords.size() != 0) {
-			DescribeSubDomainRecordsResponse.Record record = domainRecords.get(0);
-			//  记录ID
-			String recordId = record.getRecordId();
-			//  记录值
-			String recordsValue = record.getValue();
-			//  当前主机公网IP
-			String currentHostIP = this.getCurrentHostIP();
-			logger.info("当前主机公网IP为：{},当前记录值为：{}", currentHostIP, recordsValue);
+                if ("dev".equals(activeProfile)) {
+                    logger.info("{}环境不修改",activeProfile);
+                    continue;
+                }
+                if (!currentHostIP.equals(recordsValue)) {
+                    //  修改解析记录
+                    UpdateDomainRecordRequest updateDomainRecordRequest = new UpdateDomainRecordRequest();
+                    //  主机记录
+                    updateDomainRecordRequest.setRR("cloud");
+                    //  记录ID
+                    updateDomainRecordRequest.setRecordId(recordId);
+                    //  将主机记录值改为当前主机IP
+                    updateDomainRecordRequest.setValue(currentHostIP);
+                    //  解析记录类型
+                    updateDomainRecordRequest.setType("A");
+                    UpdateDomainRecordResponse updateDomainRecordResponse = this.updateDomainRecord(updateDomainRecordRequest, client);
+                    logger.info("updateDomainRecord:{}", JSON.toJSONString(updateDomainRecordResponse));
+                }
+            }
+        }
 
-			if ("dev".equals(activeProfile)) {
-				logger.info("{}环境不修改",profile);
-				return;
-			}
-
-			if (!currentHostIP.equals(recordsValue)) {
-				//  修改解析记录
-				UpdateDomainRecordRequest updateDomainRecordRequest = new UpdateDomainRecordRequest();
-				//  主机记录
-				updateDomainRecordRequest.setRR("cloud");
-				//  记录ID
-				updateDomainRecordRequest.setRecordId(recordId);
-				//  将主机记录值改为当前主机IP
-				updateDomainRecordRequest.setValue(currentHostIP);
-				//  解析记录类型
-				updateDomainRecordRequest.setType("A");
-				UpdateDomainRecordResponse updateDomainRecordResponse = this.updateDomainRecord(updateDomainRecordRequest, client);
-				logger.info("updateDomainRecord:{}", updateDomainRecordResponse);
-			}
-		}
 	}
 
 	/**
