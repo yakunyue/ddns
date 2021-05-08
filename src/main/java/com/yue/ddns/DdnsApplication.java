@@ -5,6 +5,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 @EnableScheduling
 @SpringBootApplication
 public class DdnsApplication {
@@ -33,10 +37,18 @@ public class DdnsApplication {
 			String prodPath = "file:/mycloud/ddns/application.yaml";
 			configFilesPath = String.join(",", configFilesPath, prodPath);
 		}
-		System.setProperty(CONFIG_FILES_PATH, configFilesPath);
+
+		System.setProperty(CONFIG_FILES_PATH, configFilesPath);//这个好像没用吧？@yuexiaobing
+
+		String[] newArgs = new String[args.length+1];
+		for (int i = 0; i < args.length; i++) {
+			newArgs[i] = args[i];
+		}
+		newArgs[args.length] = "--spring.config.location=" + configFilesPath;
+
 		// 非web方式启动
-        new SpringApplicationBuilder()
-                .sources(DdnsApplication.class).web(WebApplicationType.NONE).run(args);
+		new SpringApplicationBuilder()
+                .sources(DdnsApplication.class).web(WebApplicationType.NONE).run(newArgs);
 
     }
 }

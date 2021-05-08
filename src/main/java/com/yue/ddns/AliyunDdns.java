@@ -63,8 +63,9 @@ public class AliyunDdns {
 	public void schedulingMethod() {
 	    if (!StringUtils.hasText(domains)) {
 	        logger.info("无需要监控的domain记录");
+	        return;
         }
-        String[] domainList = domains.split(",");
+        String[] domainList = domains.split(",");//空字符串split后会得到[""]
         for (String domain : domainList) {
             //指定查询的二级域名
             DescribeSubDomainRecordsRequest recordsRequest = new DescribeSubDomainRecordsRequest();
