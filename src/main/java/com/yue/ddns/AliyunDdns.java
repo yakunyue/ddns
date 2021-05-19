@@ -93,7 +93,7 @@ public class AliyunDdns {
                     //  修改解析记录
                     UpdateDomainRecordRequest updateDomainRecordRequest = new UpdateDomainRecordRequest();
                     //  主机记录
-                    updateDomainRecordRequest.setRR("cloud");
+                    updateDomainRecordRequest.setRR(domain.substring(0,domain.indexOf(".")));
                     //  记录ID
                     updateDomainRecordRequest.setRecordId(recordId);
                     //  将主机记录值改为当前主机IP
