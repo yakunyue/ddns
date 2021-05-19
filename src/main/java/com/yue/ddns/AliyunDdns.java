@@ -176,7 +176,7 @@ public class AliyunDdns {
 		} catch (ClientException e) {
 			e.printStackTrace();
 			//  发生调用错误，抛出运行时异常
-			throw new RuntimeException();
+			throw new RuntimeException(e.getMessage());
 		}
 	}
 }
