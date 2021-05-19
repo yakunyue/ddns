@@ -67,6 +67,7 @@ public class AliyunDdns {
         }
         String[] domainList = domains.split(",");//空字符串split后会得到[""]
         for (String domain : domainList) {
+			logger.info("开始处理：domain:{}", domain);
             //指定查询的二级域名
             DescribeSubDomainRecordsRequest recordsRequest = new DescribeSubDomainRecordsRequest();
             recordsRequest.setSubDomain(domain);
