@@ -1,6 +1,10 @@
 package com.yue.ddns;
 
 import com.alibaba.fastjson.JSON;
+import com.aliyun.rds20140815.Client;
+import com.aliyun.rds20140815.models.ModifySecurityIpsRequest;
+import com.aliyun.rds20140815.models.ModifySecurityIpsResponse;
+import com.aliyun.teaopenapi.models.Config;
 import com.aliyuncs.DefaultAcsClient;
 import com.aliyuncs.IAcsClient;
 import com.aliyuncs.alidns.model.v20150109.DescribeSubDomainRecordsRequest;
@@ -21,7 +25,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,33 +34,46 @@ public class AliyunDdns {
 
 	private Logger logger = LoggerFactory.getLogger(this.getClass());
 
-	private DefaultProfile profile;
-	private IAcsClient client;
 	@Value("${spring.profiles.active}")
 	private String activeProfile;// 环境
+
+	private DefaultProfile profile;
+	private IAcsClient ddnsClient;
+	private Client rdsClient;
 
 	@Value("${aliyun.ddns.regionId}")
 	private String regionId;// 地域ID
 	@Value("${aliyun.ddns.accessKeyId}")
-	private String accessKeyId;// 您的AccessKey ID
+	private String ddsnAccessKeyId;// 您的AccessKey ID
 	@Value("${aliyun.ddns.secret}")
-	private String secret;// 您的AccessKey Secret
+	private String ddnsSecret;// 您的AccessKey Secret
     @Value("${aliyun.ddns.domains}")
 	private String domains;
     @Value("${aliyun.ddns.fixedDelay}")
     private String fixedDelay;
 
+	@Value("${aliyun.rds.accessKeyId}")
+	private String rdsAccessKeyId;
+	@Value("${aliyun.rds.rdsSecret}")
+	private String rdsSecret;
+
 	@PostConstruct
-	public void init(){
+	public void init() throws Exception {
 		//  设置鉴权参数，初始化客户端
-        logger.info("----------------system init start----------------");
-		profile = DefaultProfile.getProfile(regionId, accessKeyId, secret);
-		client = new DefaultAcsClient(profile);
+		logger.info("----------------ddns init start----------------");
+		profile = DefaultProfile.getProfile(regionId, ddsnAccessKeyId, ddnsSecret);
+		ddnsClient = new DefaultAcsClient(profile);
 		logger.info("需要监控的domains：{}", domains);
 		logger.info("任务执行频率：{}s", fixedDelay);
-        logger.info("----------------system init end----------------");
+		logger.info("----------------ddns init end----------------");
 
-    }
+		logger.info("----------------rds init start----------------");
+		Config config = new Config().setAccessKeyId(rdsAccessKeyId)
+				.setAccessKeySecret(rdsSecret)
+				.setEndpoint("rds.aliyuncs.com");
+		rdsClient = new Client(config);
+	logger.info("----------------rds init end----------------");
+	}
 
 	@Scheduled(initialDelay = 10000, fixedDelayString = "${aliyun.ddns.fixedDelay}000")//3min
 	public void schedulingMethod() {
@@ -71,7 +87,7 @@ public class AliyunDdns {
             //指定查询的二级域名
             DescribeSubDomainRecordsRequest recordsRequest = new DescribeSubDomainRecordsRequest();
             recordsRequest.setSubDomain(domain);
-            DescribeSubDomainRecordsResponse recordsResponse = this.describeSubDomainRecords(recordsRequest, client);
+            DescribeSubDomainRecordsResponse recordsResponse = this.describeSubDomainRecords(recordsRequest, ddnsClient);
             List<DescribeSubDomainRecordsResponse.Record> domainRecords = recordsResponse.getDomainRecords();
             logger.info("查询解析记录结果，domainRecords:{}", JSON.toJSONString(domainRecords));
             //最新的一条解析记录
@@ -100,8 +116,9 @@ public class AliyunDdns {
                     updateDomainRecordRequest.setValue(currentHostIP);
                     //  解析记录类型
                     updateDomainRecordRequest.setType("A");
-                    UpdateDomainRecordResponse updateDomainRecordResponse = this.updateDomainRecord(updateDomainRecordRequest, client);
+                    UpdateDomainRecordResponse updateDomainRecordResponse = this.updateDomainRecord(updateDomainRecordRequest, ddnsClient);
                     logger.info("updateDomainRecord:{}", JSON.toJSONString(updateDomainRecordResponse));
+                    modifySecurityIps(currentHostIP);
                 }
             }
         }
@@ -178,6 +195,20 @@ public class AliyunDdns {
 			e.printStackTrace();
 			//  发生调用错误，抛出运行时异常
 			throw new RuntimeException(e.getMessage());
+		}
+	}
+
+	private void modifySecurityIps(String securityIp) {
+		try {
+			logger.info("修改rds白名单");
+			ModifySecurityIpsRequest modifySecurityIpsRequest = new ModifySecurityIpsRequest().setDBInstanceId("rm-2zexsrx1445g72i8o")
+					.setSecurityIps(securityIp)
+					.setDBInstanceIPArrayName("niutuo");
+			ModifySecurityIpsResponse modifySecurityIpsResponse = rdsClient.modifySecurityIps(modifySecurityIpsRequest);
+			logger.info("修改rds白名单完成，result：{}", modifySecurityIpsResponse);
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.error("修改rds白名单失败，error msg：{}", e.getMessage());
 		}
 	}
 }
