@@ -54,7 +54,7 @@ public class AliyunDdns {
 
 	@Value("${aliyun.rds.accessKeyId}")
 	private String rdsAccessKeyId;
-	@Value("${aliyun.rds.rdsSecret}")
+	@Value("${aliyun.rds.secret}")
 	private String rdsSecret;
 
 	@PostConstruct
