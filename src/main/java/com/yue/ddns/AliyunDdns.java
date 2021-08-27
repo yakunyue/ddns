@@ -146,21 +146,23 @@ public class AliyunDdns {
 		// 这里使用jsonip.com第三方接口获取本地IP
 		String jsonip = "https://jsonip.com";
 		// 接口返回结果
-		String result = "";
+		StringBuffer result =  new StringBuffer();
 		BufferedReader in = null;
 		try {
 			// 使用HttpURLConnection网络请求第三方接口
 			URL url = new URL(jsonip);
 			HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
 			urlConnection.setRequestMethod("GET");
+			urlConnection.setReadTimeout(10000);//设置超时时间、避免定时任务线程hang住
 			urlConnection.connect();
 			in = new BufferedReader(new InputStreamReader(urlConnection.getInputStream()));
 			String line;
 			while ((line = in.readLine()) != null) {
-				result += line;
+				result.append(line);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+			logger.error("获取当前ip出错，error message:{}",e.getMessage());
 		}
 		// 使用finally块来关闭输入流
 		finally {
@@ -175,7 +177,7 @@ public class AliyunDdns {
 		//  正则表达式，提取xxx.xxx.xxx.xxx，将IP地址从接口返回结果中提取出来
 		String rexp = "(\\d{1,3}\\.){3}\\d{1,3}";
 		Pattern pat = Pattern.compile(rexp);
-		Matcher mat = pat.matcher(result);
+		Matcher mat = pat.matcher(result.toString());
 		String res = "";
 		while (mat.find()) {
 			res = mat.group();
