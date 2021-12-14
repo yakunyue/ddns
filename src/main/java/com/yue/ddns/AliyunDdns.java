@@ -118,7 +118,7 @@ public class AliyunDdns {
                     updateDomainRecordRequest.setType("A");
                     UpdateDomainRecordResponse updateDomainRecordResponse = this.updateDomainRecord(updateDomainRecordRequest, ddnsClient);
                     logger.info("updateDomainRecord:{}", JSON.toJSONString(updateDomainRecordResponse));
-                    modifySecurityIps(currentHostIP);
+                    modifySecurityIps(currentHostIP);// TODO: 2021/12/14 rds不用了，可以去掉了
                 }
             }
         }
