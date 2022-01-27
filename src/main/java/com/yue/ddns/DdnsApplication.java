@@ -48,7 +48,7 @@ public class DdnsApplication {
 
 		// 非web方式启动
 		new SpringApplicationBuilder()
-                .sources(DdnsApplication.class).web(WebApplicationType.NONE).run(newArgs);
+                .sources(DdnsApplication.class).run(newArgs);
 
     }
 }
