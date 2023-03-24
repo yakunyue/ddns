@@ -144,7 +144,7 @@ public class AliyunDdns {
 	 */
 	private String getCurrentHostIP() {
 		// 这里使用jsonip.com第三方接口获取本地IP
-		String jsonip = "https://jsonip.com";
+		String jsonip = "https://4.ipw.cn/";
 		// 接口返回结果
 		StringBuffer result =  new StringBuffer();
 		BufferedReader in = null;
